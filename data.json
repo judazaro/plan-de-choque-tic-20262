@@ -1,0 +1,92 @@
+{
+  "plan": {
+    "nombre": "Plan de Choque 2026",
+    "actualizado": "2026-08-25"
+  },
+  "tareas": [
+    {
+      "id": "1",
+      "categoria": "Análisis",
+      "nombre": "Diagnóstico de la situación actual",
+      "responsable": "Equipo de Análisis",
+      "dependencias": [],
+      "inicio_plan": "2026-08-25",
+      "fin_plan": "2026-08-31",
+      "inicio_real": "2026-08-25",
+      "fin_real": "2026-08-30",
+      "avance": 100,
+      "estado": "completado",
+      "prioridad": "alta"
+    },
+    {
+      "id": "2",
+      "categoria": "Planeación",
+      "nombre": "Definir objetivos y metas del plan",
+      "responsable": "Coordinación General",
+      "dependencias": ["1"],
+      "inicio_plan": "2026-08-31",
+      "fin_plan": "2026-09-04",
+      "inicio_real": "2026-08-30",
+      "fin_real": "",
+      "avance": 70,
+      "estado": "en_progreso",
+      "prioridad": "alta"
+    },
+    {
+      "id": "3",
+      "categoria": "Planeación",
+      "nombre": "Asignar responsables por frente",
+      "responsable": "Coordinación General",
+      "dependencias": ["2"],
+      "inicio_plan": "2026-09-04",
+      "fin_plan": "2026-09-08",
+      "inicio_real": "2026-09-02",
+      "fin_real": "",
+      "avance": 30,
+      "estado": "en_progreso",
+      "prioridad": "media"
+    },
+    {
+      "id": "4",
+      "categoria": "Operación",
+      "nombre": "Implementar acciones inmediatas",
+      "responsable": "Equipo Operativo",
+      "dependencias": ["3"],
+      "inicio_plan": "2026-09-08",
+      "fin_plan": "2026-09-18",
+      "inicio_real": "",
+      "fin_real": "",
+      "avance": 0,
+      "estado": "pendiente",
+      "prioridad": "alta"
+    },
+    {
+      "id": "5",
+      "categoria": "Seguimiento",
+      "nombre": "Seguimiento semanal de indicadores",
+      "responsable": "Equipo de Análisis",
+      "dependencias": ["4"],
+      "inicio_plan": "2026-09-11",
+      "fin_plan": "2026-09-30",
+      "inicio_real": "",
+      "fin_real": "",
+      "avance": 0,
+      "estado": "pendiente",
+      "prioridad": "media"
+    },
+    {
+      "id": "6",
+      "categoria": "Cierre",
+      "nombre": "Informe de cierre y lecciones aprendidas",
+      "responsable": "Coordinación General",
+      "dependencias": ["5"],
+      "inicio_plan": "2026-09-20",
+      "fin_plan": "2026-09-30",
+      "inicio_real": "",
+      "fin_real": "",
+      "avance": 0,
+      "estado": "pendiente",
+      "prioridad": "baja"
+    }
+  ]
+}
