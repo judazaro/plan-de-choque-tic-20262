@@ -162,6 +162,10 @@
   .date-pair{font-size:11px; line-height:1.5;}
   .date-pair .lbl{color:var(--muted); display:inline-block; width:34px;}
   .cat-dot-inline{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px;}
+  .prio-dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; vertical-align:middle;}
+  .prio-dot.prio-alta{background:var(--red);}
+  .prio-dot.prio-media{background:var(--amber);}
+  .prio-dot.prio-baja{background:var(--muted);}
   .dep-list{font-size:11px; color:var(--muted);}
 
   .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;}
@@ -197,6 +201,31 @@
   }
   #depsBox input{accent-color:var(--cyan);}
   #depsBox .none{color:var(--muted); font-size:12px;}
+
+  /* Gestor de categorías */
+  .cat-manager-list{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+  .cat-manager-chip{
+    display:flex; align-items:center; gap:8px; background:var(--panel-alt); border:1px solid var(--line);
+    border-radius:8px; padding:6px 8px;
+  }
+  .cat-manager-chip input[type=color]{width:22px; height:22px; padding:0; border:none; border-radius:5px; cursor:pointer; background:none;}
+  .cat-manager-chip input[type=text]{
+    background:transparent; border:none; color:var(--text); font-size:12.5px; width:120px; padding:2px 0;
+  }
+  .cat-manager-chip input[type=text]:focus{outline:none; border-bottom:1px solid var(--cyan);}
+  .cat-manager-chip .count{font-size:10.5px; color:var(--muted); font-family:'JetBrains Mono',monospace; white-space:nowrap;}
+  .cat-manager-chip .del{background:none; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:0 2px;}
+  .cat-manager-chip .del:hover{color:var(--red);}
+  .cat-manager-chip .reorder{display:flex; flex-direction:column; gap:0;}
+  .cat-manager-chip .reorder button{
+    background:none; border:none; color:var(--muted); cursor:pointer; font-size:9px; line-height:1; padding:1px 3px;
+  }
+  .cat-manager-chip .reorder button:hover:not(:disabled){color:var(--cyan);}
+  .cat-manager-chip .reorder button:disabled{opacity:.25; cursor:default;}
+  .cat-manager-add{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .cat-manager-add input[type=text]{width:220px;}
+  .cat-manager-add input[type=color]{width:38px; height:34px; padding:2px; cursor:pointer;}
+  .cat-empty{color:var(--muted); font-size:12.5px;}
   datalist{}
 
   .empty-state{text-align:center; padding:40px 10px; color:var(--muted);}
@@ -325,6 +354,10 @@
         <div id="chartResponsable"></div>
       </div>
       <div class="chart-box">
+        <h3>Distribución por prioridad</h3>
+        <div class="chart-flex" id="chartPrioridad"></div>
+      </div>
+      <div class="chart-box">
         <h3>Curva de avance — plan vs. real a la fecha</h3>
         <div id="chartCurva"></div>
       </div>
@@ -347,6 +380,18 @@
   </section>
 
   <section class="card">
+    <div class="card-head">
+      <h2>Categorías</h2>
+    </div>
+    <div class="cat-manager-list" id="catManagerList"></div>
+    <div class="cat-manager-add">
+      <input type="text" id="newCatName" placeholder="Nombre de la nueva categoría">
+      <input type="color" id="newCatColor" value="#38BDF8">
+      <button class="action" id="btnAddCategoria">+ Agregar categoría</button>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Actividades</h2>
     <div class="toolbar">
       <button class="action" id="btnNew">+ Nueva actividad</button>
@@ -361,6 +406,12 @@
       <select id="filterCategoria">
         <option value="">Todas las categorías</option>
       </select>
+      <select id="filterPrioridad">
+        <option value="">Todas las prioridades</option>
+        <option value="alta">Alta</option>
+        <option value="media">Media</option>
+        <option value="baja">Baja</option>
+      </select>
       <div style="flex:1"></div>
       <button class="ghost" id="btnExport">⬇ Descargar data.json</button>
       <label class="ghost" style="cursor:pointer;">
@@ -373,7 +424,17 @@
       <div class="form-section-title">Datos generales</div>
       <div class="form-grid">
         <div style="grid-column:span 2;"><label>Nombre</label><input type="text" id="f_nombre"></div>
-        <div><label>Categoría</label><input type="text" id="f_categoria" list="catOptions"><datalist id="catOptions"></datalist></div>
+        <div><label>Categoría</label>
+          <select id="f_categoria"></select>
+          <button type="button" class="ghost" id="btnNuevaCatInline" style="margin-top:6px; padding:5px 8px; font-size:11px;">+ Nueva categoría</button>
+          <div id="nuevaCatInlineBox" style="display:none; margin-top:6px; gap:6px; flex-direction:column;">
+            <input type="text" id="nuevaCatNombre" placeholder="Nombre de la categoría">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input type="color" id="nuevaCatColor" value="#38BDF8" style="width:36px; height:32px; padding:2px; cursor:pointer;">
+              <button type="button" class="action" id="btnAgregarCatInline" style="padding:6px 10px; font-size:12px;">Agregar y usar</button>
+            </div>
+          </div>
+        </div>
         <div><label>Responsable</label><input type="text" id="f_responsable"></div>
       </div>
 
@@ -433,13 +494,21 @@
   const CAT_PALETTE = ['#38BDF8','#F2A93B','#3DDC84','#C084FC','#FF8A65','#4DD0E1','#F472B6','#A3E635'];
   const STATUS_COLOR = { completado:'var(--green)', en_progreso:'var(--amber)', pendiente:'var(--muted)', atrasado:'var(--red)', bloqueada:'var(--violet)' };
   const STATUS_LABEL = { completado:'Completado', en_progreso:'En progreso', pendiente:'Pendiente', atrasado:'Atrasado', bloqueada:'Bloqueada' };
+  const PRIORIDAD_LABEL = { alta:'Alta', media:'Media', baja:'Baja' };
+  const PRIORIDAD_COLOR = { alta:'#FF5C5C', media:'#F2A93B', baja:'#8A93A3' };
 
   let plan = { nombre:'Plan de Choque', actualizado:'' };
   let tareas = [];
+  let categorias = [];   // [{nombre, color}] — lista administrable de categorías
   let editingId = null;
   let catColorMap = {};
 
   // Datos de respaldo por si data.json no puede cargarse (ej. vista previa sin servidor local)
+  const FALLBACK_CATEGORIAS = [
+    {nombre:"Análisis", color:"#38BDF8"}, {nombre:"Planeación", color:"#F2A93B"},
+    {nombre:"Operación", color:"#3DDC84"}, {nombre:"Seguimiento", color:"#C084FC"},
+    {nombre:"Cierre", color:"#FF8A65"}
+  ];
   const FALLBACK_TAREAS = [
     {id:"1", categoria:"Análisis", nombre:"Diagnóstico de la situación actual", responsable:"Equipo de Análisis", dependencias:[], inicio_plan:"2026-08-25", fin_plan:"2026-08-31", inicio_real:"2026-08-25", fin_real:"2026-08-30", avance:100, estado:"completado", prioridad:"alta"},
     {id:"2", categoria:"Planeación", nombre:"Definir objetivos y metas del plan", responsable:"Coordinación General", dependencias:["1"], inicio_plan:"2026-08-31", fin_plan:"2026-09-04", inicio_real:"2026-08-30", fin_real:"", avance:70, estado:"en_progreso", prioridad:"alta"},
@@ -470,12 +539,26 @@
   }
 
   function assignCatColors(){
-    catColorMap = {};
-    let i=0;
+    // Si no hay lista administrada de categorías (ej. data.json antiguo sin
+    // el campo "categorias"), la reconstruimos a partir de lo que ya usan las tareas.
+    if(!categorias.length){
+      const vistos = [];
+      tareas.forEach(t=>{
+        const c = t.categoria || 'Sin categoría';
+        if(!vistos.includes(c)) vistos.push(c);
+      });
+      categorias = vistos.map((nombre,i)=>({ nombre, color: CAT_PALETTE[i % CAT_PALETTE.length] }));
+    }
+    // Autosanar: si alguna tarea usa una categoría que ya no está en la lista
+    // (por edición manual del JSON), la agregamos para no perder datos.
     tareas.forEach(t=>{
       const c = t.categoria || 'Sin categoría';
-      if(!(c in catColorMap)){ catColorMap[c] = CAT_PALETTE[i % CAT_PALETTE.length]; i++; }
+      if(!categorias.some(cat=>cat.nombre===c)){
+        categorias.push({ nombre:c, color: CAT_PALETTE[categorias.length % CAT_PALETTE.length] });
+      }
     });
+    catColorMap = {};
+    categorias.forEach(c=>{ catColorMap[c.nombre] = c.color; });
   }
 
   function loadLocal(){
@@ -486,22 +569,23 @@
     return null;
   }
   function saveLocal(){
-    try{ localStorage.setItem('plan_choque_data_v2', JSON.stringify({plan, tareas})); }
+    try{ localStorage.setItem('plan_choque_data_v2', JSON.stringify({plan, tareas, categorias})); }
     catch(e){ /* localStorage no disponible en este entorno; se ignora */ }
   }
 
   async function init(){
     const cached = loadLocal();
     if(cached){
-      plan = cached.plan; tareas = cached.tareas;
+      plan = cached.plan; tareas = cached.tareas; categorias = cached.categorias || [];
     } else {
       try{
         const res = await fetch('data.json');
         const json = await res.json();
-        plan = json.plan; tareas = json.tareas;
+        plan = json.plan; tareas = json.tareas; categorias = json.categorias || [];
       }catch(e){
         plan = {"nombre":"Plan de Choque 2026","actualizado":"2026-08-25"};
         tareas = FALLBACK_TAREAS;
+        categorias = FALLBACK_CATEGORIAS;
       }
     }
     document.getElementById('planTitle').textContent = plan.nombre || 'Plan de Choque';
@@ -518,9 +602,110 @@
     renderExecSummary();
     renderCatLegend();
     renderCatFilterOptions();
+    renderCatManager();
     renderCharts();
     renderGantt();
     renderTable();
+  }
+
+  function renderCatManager(){
+    const list = document.getElementById('catManagerList');
+    list.innerHTML = '';
+    if(!categorias.length){
+      list.innerHTML = '<div class="cat-empty">Aún no hay categorías. Agrega la primera abajo.</div>';
+      return;
+    }
+    categorias.forEach((cat,idx)=>{
+      const n = tareas.filter(t=>(t.categoria||'Sin categoría')===cat.nombre).length;
+      const chip = document.createElement('div');
+      chip.className = 'cat-manager-chip';
+      chip.innerHTML = `
+        <div class="reorder">
+          <button data-cat-up="${cat.nombre}" title="Subir" ${idx===0?'disabled':''}>▲</button>
+          <button data-cat-down="${cat.nombre}" title="Bajar" ${idx===categorias.length-1?'disabled':''}>▼</button>
+        </div>
+        <input type="color" value="${cat.color}" data-cat-color="${cat.nombre}">
+        <input type="text" value="${cat.nombre}" data-cat-name="${cat.nombre}">
+        <span class="count">${n} tarea${n===1?'':'s'}</span>
+        <button class="del" data-cat-del="${cat.nombre}" title="Eliminar categoría">✕</button>
+      `;
+      list.appendChild(chip);
+    });
+
+    list.querySelectorAll('[data-cat-up]').forEach(btn=>{
+      btn.addEventListener('click', e=>moverCategoria(e.target.dataset.catUp, -1));
+    });
+    list.querySelectorAll('[data-cat-down]').forEach(btn=>{
+      btn.addEventListener('click', e=>moverCategoria(e.target.dataset.catDown, 1));
+    });
+
+    list.querySelectorAll('[data-cat-color]').forEach(inp=>{
+      inp.addEventListener('input', e=>{
+        const cat = categorias.find(c=>c.nombre===e.target.dataset.catColor);
+        if(cat){ cat.color = e.target.value; saveLocal(); render(); }
+      });
+    });
+    list.querySelectorAll('[data-cat-name]').forEach(inp=>{
+      inp.addEventListener('change', e=>{
+        const viejoNombre = e.target.dataset.catName;
+        const nuevoNombre = e.target.value.trim();
+        if(!nuevoNombre || nuevoNombre === viejoNombre) { e.target.value = viejoNombre; return; }
+        if(categorias.some(c=>c.nombre===nuevoNombre)){
+          alert('Ya existe una categoría con ese nombre.');
+          e.target.value = viejoNombre;
+          return;
+        }
+        const cat = categorias.find(c=>c.nombre===viejoNombre);
+        cat.nombre = nuevoNombre;
+        tareas.forEach(t=>{ if(t.categoria===viejoNombre) t.categoria = nuevoNombre; });
+        saveLocal(); render();
+      });
+    });
+    list.querySelectorAll('[data-cat-del]').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const nombre = e.target.dataset.catDel;
+        const n = tareas.filter(t=>(t.categoria||'Sin categoría')===nombre).length;
+        if(n > 0 && !confirm(`${n} actividad(es) usan "${nombre}". Si la eliminas, esas actividades quedarán como "Sin categoría". ¿Continuar?`)) return;
+        if(n === 0 && !confirm(`¿Eliminar la categoría "${nombre}"?`)) return;
+        categorias = categorias.filter(c=>c.nombre!==nombre);
+        tareas.forEach(t=>{ if(t.categoria===nombre) t.categoria = 'Sin categoría'; });
+        saveLocal(); render();
+      });
+    });
+  }
+
+  function moverCategoria(nombre, delta){
+    const i = categorias.findIndex(c=>c.nombre===nombre);
+    const j = i + delta;
+    if(i<0 || j<0 || j>=categorias.length) return;
+    [categorias[i], categorias[j]] = [categorias[j], categorias[i]];
+    saveLocal(); render();
+  }
+
+  function agregarCategoria(nombre, color){
+    nombre = (nombre||'').trim();
+    if(!nombre){ alert('Escribe un nombre para la categoría.'); return false; }
+    if(categorias.some(c=>c.nombre===nombre)){ alert('Ya existe una categoría con ese nombre.'); return false; }
+    categorias.push({ nombre, color: color || CAT_PALETTE[categorias.length % CAT_PALETTE.length] });
+    saveLocal();
+    return true;
+  }
+
+  function populateCategoriaSelect(seleccionar){
+    const sel = document.getElementById('f_categoria');
+    sel.innerHTML = '';
+    if(!categorias.length){
+      const opt = document.createElement('option');
+      opt.value = ''; opt.textContent = 'Sin categorías — crea una abajo';
+      sel.appendChild(opt);
+      return;
+    }
+    categorias.forEach(c=>{
+      const opt = document.createElement('option');
+      opt.value = c.nombre; opt.textContent = c.nombre;
+      sel.appendChild(opt);
+    });
+    if(seleccionar && categorias.some(c=>c.nombre===seleccionar)) sel.value = seleccionar;
   }
 
   function diasEntre(a,b){ return daysBetween(a,b); }
@@ -601,7 +786,53 @@
     renderDonutEstado();
     renderBarCategoria();
     renderBarResponsable();
+    renderDonutPrioridad();
     renderCurvaS();
+  }
+
+  function renderDonutPrioridad(){
+    const box = document.getElementById('chartPrioridad');
+    box.innerHTML = '';
+    if(!tareas.length){ box.textContent = 'Sin datos.'; return; }
+    const orden = ['alta','media','baja'];
+    const counts = {};
+    tareas.forEach(t=>{ const p = t.prioridad||'media'; counts[p] = (counts[p]||0)+1; });
+    const total = tareas.length;
+    const r = 52, cx = 60, cy = 60, C = 2*Math.PI*r;
+    const svg = svgEl('svg', {viewBox:'0 0 120 120', width:130, height:130});
+    let acc = 0;
+    orden.forEach(p=>{
+      const n = counts[p]||0;
+      if(!n) return;
+      const frac = n/total;
+      const dash = frac*C;
+      const circle = svgEl('circle', {
+        cx, cy, r, fill:'none', stroke:PRIORIDAD_COLOR[p], 'stroke-width':16,
+        'stroke-dasharray': `${dash} ${C-dash}`, 'stroke-dashoffset': -acc*C,
+        transform: `rotate(-90 ${cx} ${cy})`
+      });
+      svg.appendChild(circle);
+      acc += frac;
+    });
+    const label = svgEl('text', {x:cx, y:cy-3, 'text-anchor':'middle', fill:'currentColor', 'font-size':20, 'font-family':'JetBrains Mono, monospace', style:'font-weight:600;'});
+    label.textContent = total;
+    svg.appendChild(label);
+    const label2 = svgEl('text', {x:cx, y:cy+13, 'text-anchor':'middle', fill:'#8A93A3', 'font-size':9});
+    label2.textContent = 'tareas';
+    svg.appendChild(label2);
+    box.appendChild(svg);
+
+    const legend = document.createElement('div');
+    legend.className = 'chart-legend';
+    orden.forEach(p=>{
+      const n = counts[p]||0;
+      if(!n) return;
+      const item = document.createElement('div');
+      item.className = 'item';
+      item.innerHTML = `<span class="sw" style="background:${PRIORIDAD_COLOR[p]}"></span>${PRIORIDAD_LABEL[p]}<span class="n">${n} · ${Math.round(n/total*100)}%</span>`;
+      legend.appendChild(item);
+    });
+    box.appendChild(legend);
   }
 
   function renderDonutEstado(){
@@ -807,12 +1038,6 @@
       sel.appendChild(opt);
     });
     sel.value = current;
-
-    const dl = document.getElementById('catOptions');
-    dl.innerHTML = '';
-    Object.keys(catColorMap).forEach(cat=>{
-      const opt = document.createElement('option'); opt.value = cat; dl.appendChild(opt);
-    });
   }
 
   function renderGantt(){
@@ -855,9 +1080,8 @@
     const rows = document.createElement('div');
     rows.className = 'gantt-rows';
 
-    // Agrupar por categoría, preservando el orden de aparición
-    const cats = [];
-    tareas.forEach(t=>{ const c=t.categoria||'Sin categoría'; if(!cats.includes(c)) cats.push(c); });
+    // Agrupar por categoría, respetando el orden definido en la tarjeta "Categorías"
+    const cats = categorias.map(c=>c.nombre).filter(nombre=>tareas.some(t=>(t.categoria||'Sin categoría')===nombre));
 
     const coords = {}; // id -> {x1,x2,y}
     let yCursor = 0;
@@ -980,20 +1204,23 @@
     const tbody = document.getElementById('tableBody');
     const filterEstado = document.getElementById('filterEstado').value;
     const filterCat = document.getElementById('filterCategoria').value;
+    const filterPrioridad = document.getElementById('filterPrioridad').value;
     tbody.innerHTML = '';
     const filtered = tareas.filter(t =>
       (!filterEstado || effectiveStatus(t) === filterEstado) &&
-      (!filterCat || (t.categoria||'Sin categoría') === filterCat)
+      (!filterCat || (t.categoria||'Sin categoría') === filterCat) &&
+      (!filterPrioridad || (t.prioridad||'media') === filterPrioridad)
     );
     document.getElementById('emptyState').style.display = tareas.length ? 'none' : 'block';
 
     filtered.forEach(t=>{
       const st = effectiveStatus(t);
       const cat = t.categoria || 'Sin categoría';
+      const prio = t.prioridad || 'media';
       const deps = (t.dependencias||[]).map(byId).filter(Boolean).map(d=>d.nombre);
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${t.nombre}</td>
+        <td><span class="prio-dot prio-${prio}" title="Prioridad ${PRIORIDAD_LABEL[prio]}"></span>${t.nombre}</td>
         <td><span class="cat-dot-inline" style="background:${catColorMap[cat]}"></span>${cat}</td>
         <td class="mono" style="color:var(--muted); font-size:12px;">${t.responsable||'—'}</td>
         <td class="dep-list">${deps.length ? deps.join(', ') : '—'}</td>
@@ -1053,10 +1280,11 @@
     const form = document.getElementById('taskForm');
     form.classList.add('open');
     renderDepsBox(editingId);
+    document.getElementById('nuevaCatInlineBox').style.display = 'none';
     if(id){
       const t = byId(id);
       document.getElementById('f_nombre').value = t.nombre;
-      document.getElementById('f_categoria').value = t.categoria||'';
+      populateCategoriaSelect(t.categoria||'');
       document.getElementById('f_responsable').value = t.responsable||'';
       document.getElementById('f_inicio_plan').value = t.inicio_plan;
       document.getElementById('f_fin_plan').value = t.fin_plan;
@@ -1068,7 +1296,7 @@
       document.getElementById('f_estado').value = t.estado;
     } else {
       document.getElementById('f_nombre').value = '';
-      document.getElementById('f_categoria').value = '';
+      populateCategoriaSelect();
       document.getElementById('f_responsable').value = '';
       document.getElementById('f_inicio_plan').value = todayStr();
       document.getElementById('f_fin_plan').value = todayStr();
@@ -1132,7 +1360,7 @@
 
   function exportJSON(){
     plan.actualizado = todayStr();
-    const blob = new Blob([JSON.stringify({plan, tareas}, null, 2)], {type:'application/json'});
+    const blob = new Blob([JSON.stringify({plan, categorias, tareas}, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'data.json';
@@ -1147,6 +1375,7 @@
         const json = JSON.parse(e.target.result);
         plan = json.plan || plan;
         tareas = json.tareas || [];
+        categorias = json.categorias || [];
         saveLocal(); render();
       }catch(err){ alert('El archivo no es un JSON válido.'); }
     };
@@ -1159,6 +1388,7 @@
   document.getElementById('btnExport').addEventListener('click', exportJSON);
   document.getElementById('filterEstado').addEventListener('change', renderTable);
   document.getElementById('filterCategoria').addEventListener('change', renderTable);
+  document.getElementById('filterPrioridad').addEventListener('change', renderTable);
   document.getElementById('f_avance').addEventListener('input', e=>{
     document.getElementById('f_avance_val').textContent = e.target.value;
   });
@@ -1167,6 +1397,30 @@
   });
   document.getElementById('btnPdf').addEventListener('click', ()=>window.print());
   document.getElementById('btnCsv').addEventListener('click', exportCSV);
+
+  document.getElementById('btnAddCategoria').addEventListener('click', ()=>{
+    const nombre = document.getElementById('newCatName').value;
+    const color = document.getElementById('newCatColor').value;
+    if(agregarCategoria(nombre, color)){
+      document.getElementById('newCatName').value = '';
+      render();
+    }
+  });
+  document.getElementById('btnNuevaCatInline').addEventListener('click', ()=>{
+    const box = document.getElementById('nuevaCatInlineBox');
+    box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+    if(box.style.display === 'flex') document.getElementById('nuevaCatNombre').focus();
+  });
+  document.getElementById('btnAgregarCatInline').addEventListener('click', ()=>{
+    const nombre = document.getElementById('nuevaCatNombre').value;
+    const color = document.getElementById('nuevaCatColor').value;
+    if(agregarCategoria(nombre, color)){
+      populateCategoriaSelect(nombre.trim());
+      renderCatManager(); renderCatLegend(); renderCatFilterOptions();
+      document.getElementById('nuevaCatNombre').value = '';
+      document.getElementById('nuevaCatInlineBox').style.display = 'none';
+    }
+  });
 
   init();
 })();
